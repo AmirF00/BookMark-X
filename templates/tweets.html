@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Title}}</title>
+    <style>
+        :root {
+            --background: #1a1a1a;
+            --text: #e0e0e0;
+            --border: #333;
+            --card-bg: #252525;
+            --link: #6ea8fe;
+            --link-hover: #9ec5fe;
+            --button-bg: #0d6efd;
+            --button-hover: #0b5ed7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        nav {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        nav a {
+            color: var(--link);
+            text-decoration: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--link-hover);
+            background: var(--border);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            background: var(--button-bg);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: var(--button-hover);
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--link-hover);
+        }
+
+        h1, h2, h3 {
+            color: var(--text);
+        }
+
+        img {
+            border-radius: 50%;
+        }
+
+        dialog {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        textarea {
+            background: var(--background);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/twitts">Tweets</a> |
+        <a href="/summary">Summaries</a> |
+        <a href="/read">Read</a> |
+        <a href="/tips">Tips</a>
+    </nav>
+    <h1>Tweets</h1>
+    {{range .Data}}
+    <div class="card">
+        <img src="{{.ProfilePic}}" alt="Profile Picture" style="max-width: 48px;">
+        <h3>{{.Name}}</h3>
+        <p>{{.TweetText}}</p>
+        <a href="{{.TweetLink}}" target="_blank">View Tweet</a>
+        <button onclick="addSummary({{.SNum}}, '{{.Handle}}', '{{.TweetLink}}')">Add Summary</button>
+    </div>
+    {{end}}
+
+    <script>
+        function addSummary(sNum, handle, link) {
+            const summaryDialog = document.createElement('dialog');
+            summaryDialog.innerHTML = `
+                <form method="dialog" style="min-width: 300px;">
+                    <h3>Add Summary</h3>
+                    <textarea id="summaryText" style="width: 100%; min-height: 100px; margin: 10px 0;" placeholder="Enter your summary here..."></textarea>
+                    <div style="text-align: right;">
+                        <button value="cancel">Cancel</button>
+                        <button value="confirm" style="margin-left: 10px;">Save</button>
+                    </div>
+                </form>
+            `;
+            
+            document.body.appendChild(summaryDialog);
+            summaryDialog.showModal();
+
+            summaryDialog.addEventListener('close', async (e) => {
+                if (summaryDialog.returnValue === 'confirm') {
+                    const summary = document.getElementById('summaryText').value;
+                    const response = await fetch('/summary', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            SNum: sNum,
+                            Handle: handle,
+                            Link: link,
+                            Summary: summary,
+                            Draft: true
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert("Summary saved!");
+                        window.location.reload();
+                    }
+                }
+                summaryDialog.remove();
+            });
+        }
+    </script>
+</body>
+</html>
