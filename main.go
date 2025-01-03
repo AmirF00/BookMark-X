@@ -81,18 +81,37 @@ func saveSummaries() error {
 	return os.WriteFile("static/summaries.json", data, 0644)
 }
 
+// Add this function:
+func hasSummary(tweetNum int) bool {
+	for _, summary := range summaries {
+		if summary.SNum == tweetNum {
+			return true
+		}
+	}
+	return false
+}
+
+// Update tweetsHandler:
 func tweetsHandler(w http.ResponseWriter, r *http.Request) {
-	tweets, err := loadTweets()
+	allTweets, err := loadTweets()
 	if err != nil {
 		log.Printf("Error loading tweets: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Filter out tweets that already have summaries
+	var tweetsWithoutSummary []Tweet
+	for _, tweet := range allTweets {
+		if !hasSummary(tweet.SNum) {
+			tweetsWithoutSummary = append(tweetsWithoutSummary, tweet)
+		}
+	}
+
 	tmpl := template.Must(template.ParseFiles("templates/tweets.html"))
 	err = tmpl.Execute(w, PageData{
 		Title: "Tweets",
-		Data:  tweets,
+		Data:  tweetsWithoutSummary,
 	})
 	if err != nil {
 		log.Printf("Template error: %v", err)
