@@ -30,6 +30,12 @@ type Summary struct {
 type PageData struct {
 	Title string
 	Data  interface{}
+	Stats struct {
+		TotalTweets   int
+		TrollCount    int
+		SummaryCount  int
+		VisibleTweets int
+	}
 }
 
 var (
@@ -109,8 +115,15 @@ func tweetsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tweetsToShow []Tweet
+	trollCount := 0
+	summaryCount := 0
+
 	for _, tweet := range allTweets {
-		if !hasSummary(tweet.SNum) && !isTroll(tweet.SNum) {
+		if isTroll(tweet.SNum) {
+			trollCount++
+		} else if hasSummary(tweet.SNum) {
+			summaryCount++
+		} else {
 			tweetsToShow = append(tweetsToShow, tweet)
 		}
 	}
@@ -119,6 +132,17 @@ func tweetsHandler(w http.ResponseWriter, r *http.Request) {
 	err = tmpl.Execute(w, PageData{
 		Title: "Tweets",
 		Data:  tweetsToShow,
+		Stats: struct {
+			TotalTweets   int
+			TrollCount    int
+			SummaryCount  int
+			VisibleTweets int
+		}{
+			TotalTweets:   len(allTweets),
+			TrollCount:    trollCount,
+			SummaryCount:  summaryCount,
+			VisibleTweets: len(tweetsToShow),
+		},
 	})
 	if err != nil {
 		log.Printf("Template error: %v", err)
