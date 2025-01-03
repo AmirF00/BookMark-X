@@ -67,6 +67,15 @@
             background: var(--button-hover);
         }
 
+        .troll-button {
+            background: #dc3545;
+            margin-left: 8px;
+        }
+
+        .troll-button:hover {
+            background: #bb2d3b;
+        }
+
         a {
             color: var(--link);
             text-decoration: none;
@@ -116,6 +125,7 @@
         <p>{{.TweetText}}</p>
         <a href="{{.TweetLink}}" target="_blank">View Tweet</a>
         <button onclick="addSummary({{.SNum}}, '{{.Handle}}', '{{.TweetLink}}')">Add Summary</button>
+        <button onclick="markTroll({{.SNum}}, '{{.Handle}}', '{{.TweetLink}}')" class="troll-button">TROLL</button>
     </div>
     {{end}}
 
@@ -158,6 +168,23 @@
                 }
                 summaryDialog.remove();
             });
+        }
+
+        async function markTroll(sNum, handle, link) {
+            const response = await fetch('/mark-troll', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    SNum: sNum,
+                    Handle: handle,
+                    Link: link
+                })
+            });
+
+            if (response.ok) {
+                alert("Marked as troll!");
+                window.location.reload();
+            }
         }
     </script>
 </body>

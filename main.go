@@ -24,6 +24,7 @@ type Summary struct {
 	Link    string `json:"Link"`
 	Summary string `json:"Summary"`
 	Draft   bool   `json:"Draft"`
+	Troll   bool   `json:"Troll"`
 }
 
 type PageData struct {
@@ -81,17 +82,24 @@ func saveSummaries() error {
 	return os.WriteFile("static/summaries.json", data, 0644)
 }
 
-// Add this function:
 func hasSummary(tweetNum int) bool {
 	for _, summary := range summaries {
-		if summary.SNum == tweetNum {
+		if summary.SNum == tweetNum && !summary.Troll {
 			return true
 		}
 	}
 	return false
 }
 
-// Update tweetsHandler:
+func isTroll(tweetNum int) bool {
+	for _, summary := range summaries {
+		if summary.SNum == tweetNum && summary.Troll {
+			return true
+		}
+	}
+	return false
+}
+
 func tweetsHandler(w http.ResponseWriter, r *http.Request) {
 	allTweets, err := loadTweets()
 	if err != nil {
@@ -100,18 +108,17 @@ func tweetsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Filter out tweets that already have summaries
-	var tweetsWithoutSummary []Tweet
+	var tweetsToShow []Tweet
 	for _, tweet := range allTweets {
-		if !hasSummary(tweet.SNum) {
-			tweetsWithoutSummary = append(tweetsWithoutSummary, tweet)
+		if !hasSummary(tweet.SNum) && !isTroll(tweet.SNum) {
+			tweetsToShow = append(tweetsToShow, tweet)
 		}
 	}
 
 	tmpl := template.Must(template.ParseFiles("templates/tweets.html"))
 	err = tmpl.Execute(w, PageData{
 		Title: "Tweets",
-		Data:  tweetsWithoutSummary,
+		Data:  tweetsToShow,
 	})
 	if err != nil {
 		log.Printf("Template error: %v", err)
@@ -194,6 +201,41 @@ func tipsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func markTrollHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var data struct {
+		SNum   int    `json:"SNum"`
+		Handle string `json:"Handle"`
+		Link   string `json:"Link"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	summaries = append(summaries, Summary{
+		SNum:   data.SNum,
+		Handle: data.Handle,
+		Link:   data.Link,
+		Troll:  true,
+	})
+
+	if err := saveSummaries(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	if err := loadSummaries(); err != nil {
 		log.Fatal(err)
@@ -204,6 +246,7 @@ func main() {
 	http.HandleFunc("/summary", summaryHandler)
 	http.HandleFunc("/read", readHandler)
 	http.HandleFunc("/tips", tipsHandler)
+	http.HandleFunc("/mark-troll", markTrollHandler)
 
 	log.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
